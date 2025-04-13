@@ -1,0 +1,47 @@
+services:
+  db-omni:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+    ports:
+      - "${DB_PORT}:3306"
+    volumes:
+      - ./data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/3306'"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - cloudbeaver
+      - appsmith-network
+      - adri-network
+      - omni
+
+  liquibase:
+    image: liquibase/liquibase
+    depends_on:
+      db-omni:
+        condition: service_healthy
+    env_file:
+      - .env
+    volumes:
+      - ./changelog:/liquibase/changelog
+      - ./mysql-connector-j-8.3.0.jar:/liquibase/lib/mysql-connector-j-8.3.0.jar
+    command: tail -f /dev/null
+    networks:
+      - omni
+
+networks:
+  omni:
+    driver: bridge
+  cloudbeaver:
+    external: true
+  appsmith-network:
+    external: true
+  adri-network:
+    external: true

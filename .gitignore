@@ -1,0 +1,5 @@
+.env
+data/
+changelog/
+extra.sql
+*.jar
