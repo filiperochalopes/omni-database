@@ -1,5 +1,7 @@
 .env
 data/
-changelog/
 extra.sql
 *.jar
+csv_exports*
+mysql_backup.sql
+convert_mysql_to_postgres.py

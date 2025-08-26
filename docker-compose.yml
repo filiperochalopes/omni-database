@@ -24,6 +24,7 @@ services:
 
   liquibase:
     image: liquibase/liquibase
+    restart: unless-stopped
     depends_on:
       db-omni:
         condition: service_healthy

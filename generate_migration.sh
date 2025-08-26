@@ -9,8 +9,8 @@ fi
 CHANGELOG_DIR="./changelog"
 DB_USER="${DB_USER:-root}"
 DB_PASS="${DB_PASS:-senha}"
-DB_HOST="${DB_HOST:-db}"
-DB_PORT="${DB_PORT:-3306}"
+DB_HOST="${DB_HOST:-db-omni}"
+DB_PORT="3306"
 
 # --- ARGUMENTOS ---
 DB_NAME=""
@@ -59,15 +59,32 @@ fi
 FORMATTED_VERSION=$(echo "$VERSION" | tr '.' '_')
 
 # --- NOME DO ARQUIVO FINAL ---
-OUTPUT_FILE="${DB_CHANGELOG_DIR}/V${FORMATTED_VERSION}_${FORMATTED_MESSAGE}.sql"
+OUTPUT_FILE="${DB_CHANGELOG_DIR}/V${FORMATTED_VERSION}_${FORMATTED_MESSAGE}.mysql.sql"
 
-# --- EXECUTAR LIQUIBASE ---
+# --- ENCONTRAR O ÚLTIMO SNAPSHOT ---
+SNAPSHOT_FILE=$(ls -t "$DB_CHANGELOG_DIR"/snapshot-*.json 2>/dev/null | head -n 1)
+
+if [ -z "$SNAPSHOT_FILE" ]; then
+  echo "❌ Nenhum snapshot encontrado para ${DB_NAME} em ${DB_CHANGELOG_DIR}"
+  echo "⚡ Gere um snapshot primeiro usando ./generate_snapshot.sh -d ${DB_NAME}"
+  exit 1
+fi
+
+echo "⚡ Usando snapshot: ${SNAPSHOT_FILE}"
+
+# --- EXECUTAR LIQUIBASE COM DIFF ENTRE SNAPSHOT E BANCO ATUAL ---
 docker compose exec liquibase liquibase \
+  --referenceUrl="offline:json?file=/liquibase/changelog/${DB_NAME}/$(basename "$SNAPSHOT_FILE")" \
   --url="jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}" \
   --username="${DB_USER}" \
   --password="${DB_PASS}" \
   --changeLogFile="/liquibase/changelog/${DB_NAME}/$(basename "$OUTPUT_FILE")" \
   diffChangeLog
 
-# --- FEEDBACK ---
-echo "✅ Migration gerada: ${OUTPUT_FILE}"
+# --- VERIFICAR SE O ARQUIVO FOI CRIADO ---
+if [ -s "$OUTPUT_FILE" ]; then
+  echo "✅ Migration gerada com sucesso: ${OUTPUT_FILE}"
+else
+  echo "❌ Erro: o arquivo de migration não foi criado."
+  exit 1
+fi
